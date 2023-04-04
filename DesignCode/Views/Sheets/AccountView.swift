@@ -10,17 +10,61 @@ import SwiftUI
 struct AccountView: View {
     @State var isDeleted: Bool = false
     @State var isPinned: Bool = false
-
+    @State var address: Address = Address(id: 1, country: "Tajikistan")
+    
+    @Environment(\.dismiss) var dismiss
+    @AppStorage("isLogged") var isLogged = false
+    @AppStorage("isLiteMode") var isLiteMode = true
+    @ObservedObject var coinModel = CoinModel()
+    
+    func fetchAddress() async {
+        do {
+            let url = URL(string: "https://random-data-api.com/api/address/random_address")!
+            let (data, _) = try await URLSession.shared.data(from: url)
+            address = try JSONDecoder().decode(Address.self, from: data)
+        } catch {
+            address = Address(id: 1, country: "Error fetching")
+        }
+    }
     
     var body: some View {
         NavigationView {
             List {
                 profile
                 menu
+                
+                Section {
+                    Toggle(isOn: $isLiteMode) {
+                        Label("Lite Mode", systemImage: isLiteMode ? "tortoise" : "hare")
+                    }
+                }
+                .accentColor(.primary)
+                
                 links
+                coins
+                Button {
+                    isLogged = false
+                    dismiss()
+                } label: {
+                    Text("Sign out")
+                }
+                .tint(.red)
+            }
+            .task {
+                await fetchAddress()
+                await coinModel.fetchCoins()
+            }
+            .refreshable {
+                await fetchAddress()
+                await coinModel.fetchCoins()
             }
             .listStyle(.insetGrouped)
             .navigationTitle("Account")
+            .navigationBarItems(trailing: Button {
+                dismiss()
+            } label: {
+                Text("Done").bold()
+            })
         }
     }
     
@@ -52,7 +96,7 @@ struct AccountView: View {
             HStack {
                 Image(systemName: "location")
                     .imageScale(.small)
-                Text("Tajikistan")
+                Text(address.country)
                     .foregroundColor(.secondary)
             }
         }
@@ -110,6 +154,29 @@ struct AccountView: View {
         }
         .foregroundColor(.primary)
         .listRowSeparator(.hidden)
+    }
+    
+    var coins: some View {
+        Section(header: Text("Coins")) {
+            ForEach(coinModel.coins) { coin in
+                HStack {
+                    AsyncImage(url: URL(string: coin.logo)) { image in
+                        image.resizable()
+                            .aspectRatio(contentMode: .fit)
+                    } placeholder: {
+                        ProgressView()
+                    }
+                    .frame(width: 32, height: 32)
+                    
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(coin.coin_name)
+                        Text(coin.acronym)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+        }
     }
     
     var pinButton: some View {

@@ -9,6 +9,7 @@ import SwiftUI
 
 struct ContentView: View {
     @AppStorage("selectedTab") var selectedTab: Tab = .home
+    @AppStorage("showModal") var showModal = false
     @EnvironmentObject var model: Model
     
     var body: some View {
@@ -18,19 +19,26 @@ struct ContentView: View {
             case .home:
                 HomeView()
             case .explore:
-                AccountView()
+                ExploreView()
             case .notification:
-                AccountView()
+                NotificationsView()
             case .library:
-                AccountView()
+                LibraryView()
             }
             
             TabBar()
                 .offset(y: model.showDetail ? 200 : 0)
+            
+            if showModal {
+                ModalView()
+                    .zIndex(1)
+                    .accessibilityAddTraits(.isModal)
+            }
         }
         .safeAreaInset(edge: .bottom) {
-            Color.clear.frame(height: 44)
+            Color.clear.frame(height: 88)
         }
+        .dynamicTypeSize(.large ... .xxLarge)
     }
 }
 
